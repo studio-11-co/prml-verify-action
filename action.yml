@@ -1,0 +1,224 @@
+name: 'PRML Verify'
+description: 'Verify Pre-Registered ML Manifests in CI. Block merges when an evaluation claim was tampered, failed, or never locked. Optionally anchor the hash to the public registry.'
+author: 'Studio 11 · falsify track'
+
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  mode:
+    description: |
+      Verification mode:
+      - "guard" (default): scan all .falsify/ claims, fail on any FAIL/STALE
+      - "verdict": check one specific claim by name (requires `claim` input)
+      - "lock": hash and freeze a claim (one-time pre-registration; rare in CI)
+    required: false
+    default: 'guard'
+
+  claim:
+    description: 'Claim name (required when mode=verdict or mode=lock)'
+    required: false
+    default: ''
+
+  expected-hash:
+    description: |
+      Expected SHA-256 hash to verify against. If set and the computed hash
+      mismatches, the action exits 3 (TAMPER). Useful to pin a specific
+      registry-anchored claim across CI runs.
+    required: false
+    default: ''
+
+  anchor-to-registry:
+    description: |
+      If "true", also POST the canonical manifest to the public registry
+      (default: registry.falsify.dev) and surface the permalink as an output.
+      Defaults to "false" — only enable when you want a public receipt.
+    required: false
+    default: 'false'
+
+  registry-url:
+    description: 'Public PRML registry endpoint (used only when anchor-to-registry=true).'
+    required: false
+    default: 'https://registry.falsify.dev'
+
+  registry-handle:
+    description: 'Submitter handle to attach to the registry commit (defaults to GitHub repo owner).'
+    required: false
+    default: ''
+
+  python-version:
+    description: 'Python version used to run falsify.'
+    required: false
+    default: '3.11'
+
+  falsify-version:
+    description: 'falsify package version pinned for reproducibility (default: 0.1.3).'
+    required: false
+    default: '0.1.3'
+
+  working-directory:
+    description: 'Path to the repository root that contains .falsify/.'
+    required: false
+    default: '.'
+
+outputs:
+  hash:
+    description: 'SHA-256 digest of the canonical manifest bytes.'
+    value: ${{ steps.run.outputs.hash }}
+  permalink:
+    description: 'Registry permalink (only set when anchor-to-registry=true and registry POST succeeded).'
+    value: ${{ steps.run.outputs.permalink }}
+  status:
+    description: 'Final status: pass / fail / tamper / inconclusive.'
+    value: ${{ steps.run.outputs.status }}
+  badge-snippet:
+    description: 'Markdown snippet for embedding the registry badge in a README.'
+    value: ${{ steps.run.outputs.badge-snippet }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install falsify ${{ inputs.falsify-version }}
+      shell: bash
+      run: |
+        python -m pip install --quiet --upgrade pip
+        pip install --quiet "falsify==${{ inputs.falsify-version }}"
+        falsify --version
+
+    - name: Verify
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PRML_MODE: ${{ inputs.mode }}
+        PRML_CLAIM: ${{ inputs.claim }}
+        PRML_EXPECTED_HASH: ${{ inputs.expected-hash }}
+        PRML_ANCHOR: ${{ inputs.anchor-to-registry }}
+        PRML_REGISTRY: ${{ inputs.registry-url }}
+        PRML_HANDLE: ${{ inputs.registry-handle }}
+        GH_REPO_OWNER: ${{ github.repository_owner }}
+      run: |
+        set -uo pipefail
+
+        # Resolve handle (input wins, otherwise GitHub repo owner)
+        HANDLE="${PRML_HANDLE:-${GH_REPO_OWNER:-anonymous}}"
+
+        # Default outputs
+        echo "hash=" >> "$GITHUB_OUTPUT"
+        echo "permalink=" >> "$GITHUB_OUTPUT"
+        echo "status=inconclusive" >> "$GITHUB_OUTPUT"
+        echo "badge-snippet=" >> "$GITHUB_OUTPUT"
+
+        STATUS="inconclusive"
+        EXIT=0
+
+        case "$PRML_MODE" in
+          guard)
+            echo "::group::falsify guard (scanning all claims)"
+            falsify guard
+            EXIT=$?
+            echo "::endgroup::"
+            case "$EXIT" in
+              0)  STATUS="pass" ;;
+              10) STATUS="fail" ;;
+              3)  STATUS="tamper" ;;
+              *)  STATUS="inconclusive" ;;
+            esac
+            ;;
+
+          verdict)
+            if [ -z "$PRML_CLAIM" ]; then
+              echo "::error::mode=verdict requires the 'claim' input."
+              exit 2
+            fi
+            echo "::group::falsify verdict $PRML_CLAIM"
+            falsify verdict "$PRML_CLAIM"
+            EXIT=$?
+            echo "::endgroup::"
+
+            # Hash the locked spec for output
+            LOCKED=".falsify/${PRML_CLAIM}/spec.lock.json"
+            if [ -f "$LOCKED" ]; then
+              HASH=$(python -c "import json,sys; d=json.load(open('$LOCKED')); print(d.get('hash',''))" 2>/dev/null || true)
+              if [ -n "$HASH" ]; then
+                echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+              fi
+
+              # Compare against expected-hash if set
+              if [ -n "$PRML_EXPECTED_HASH" ] && [ "$HASH" != "$PRML_EXPECTED_HASH" ]; then
+                echo "::error::Hash mismatch — expected $PRML_EXPECTED_HASH, got $HASH"
+                STATUS="tamper"
+                echo "status=tamper" >> "$GITHUB_OUTPUT"
+                exit 3
+              fi
+            fi
+
+            case "$EXIT" in
+              0)  STATUS="pass" ;;
+              10) STATUS="fail" ;;
+              3)  STATUS="tamper" ;;
+              *)  STATUS="inconclusive" ;;
+            esac
+            ;;
+
+          lock)
+            if [ -z "$PRML_CLAIM" ]; then
+              echo "::error::mode=lock requires the 'claim' input."
+              exit 2
+            fi
+            echo "::group::falsify lock $PRML_CLAIM"
+            falsify lock "$PRML_CLAIM"
+            EXIT=$?
+            echo "::endgroup::"
+            STATUS="pass"
+            [ "$EXIT" -ne 0 ] && STATUS="inconclusive"
+            ;;
+
+          *)
+            echo "::error::Unknown mode '$PRML_MODE'. Use guard / verdict / lock."
+            exit 2
+            ;;
+        esac
+
+        echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+        # Optional: anchor to public registry (best-effort, non-fatal)
+        if [ "$PRML_ANCHOR" = "true" ] && [ "$STATUS" != "tamper" ] && [ -n "$PRML_CLAIM" ]; then
+          MANIFEST_PATH=".falsify/${PRML_CLAIM}/spec.yaml"
+          if [ -f "$MANIFEST_PATH" ]; then
+            echo "::group::Anchor to ${PRML_REGISTRY}"
+            ANCHOR_OUT=$(python "${{ github.action_path }}/scripts/anchor.py" "$MANIFEST_PATH" "$PRML_REGISTRY" "$HANDLE" 2>&1 || true)
+            echo "$ANCHOR_OUT"
+            echo "::endgroup::"
+            HASH=$(echo "$ANCHOR_OUT" | grep '^hash=' | cut -d= -f2-)
+            PERMALINK=$(echo "$ANCHOR_OUT" | grep '^permalink=' | cut -d= -f2-)
+            if [ -n "$HASH" ]; then
+              echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+              echo "permalink=$PERMALINK" >> "$GITHUB_OUTPUT"
+              SHORT=$(echo "$HASH" | cut -c1-12)
+              SNIPPET="[![PRML locked · ${SHORT}](${PRML_REGISTRY}/badge/${HASH}.svg)](${PERMALINK})"
+              echo "badge-snippet=$SNIPPET" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+        fi
+
+        # Surface a clean summary in the GitHub Actions UI
+        {
+          echo "## PRML Verify"
+          echo ""
+          echo "| Field | Value |"
+          echo "|-------|-------|"
+          echo "| Mode | \`$PRML_MODE\` |"
+          [ -n "$PRML_CLAIM" ] && echo "| Claim | \`$PRML_CLAIM\` |"
+          echo "| Status | \`$STATUS\` |"
+          [ -n "$HASH" ] && echo "| Hash | \`$HASH\` |"
+          [ -n "$PERMALINK" ] && echo "| Permalink | $PERMALINK |"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        exit $EXIT

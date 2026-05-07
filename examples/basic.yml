@@ -1,0 +1,13 @@
+# Example: zero-config PRML guard
+# Drops in any repo that has a .falsify/ directory.
+# Fails the build on any tampered or regressed claim.
+
+name: PRML
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: studio-11-co/prml-verify-action@v1

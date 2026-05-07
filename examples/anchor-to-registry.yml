@@ -1,0 +1,29 @@
+# Example: verify a claim AND POST it to the public registry.
+# Surfaces a paste-ready Markdown badge snippet you can drop into your README.
+# The registry has no auth and no server-side state beyond the hash.
+
+name: PRML anchor
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  anchor:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - id: prml
+        uses: studio-11-co/prml-verify-action@v1
+        with:
+          mode: verdict
+          claim: imagenet-resnet50-baseline
+          anchor-to-registry: 'true'
+      - name: Permalink + badge snippet
+        run: |
+          echo "Status:    ${{ steps.prml.outputs.status }}"
+          echo "Hash:      ${{ steps.prml.outputs.hash }}"
+          echo "Permalink: ${{ steps.prml.outputs.permalink }}"
+          echo ""
+          echo "README badge (paste this):"
+          echo '${{ steps.prml.outputs.badge-snippet }}'

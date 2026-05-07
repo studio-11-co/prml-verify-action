@@ -1,0 +1,23 @@
+# Example: verify a specific claim and pin its SHA-256.
+# Useful when you've published a paper or model card citing a specific
+# registry permalink — pin the hash here and CI fails if anyone tampers.
+
+name: PRML verdict
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - id: prml
+        uses: studio-11-co/prml-verify-action@v1
+        with:
+          mode: verdict
+          claim: imagenet-resnet50-baseline
+          # Replace with the hash you committed to the registry:
+          expected-hash: fb7403c40afe63d892bf4aea2c123fdd7fe85366b74a277875465c4cb3cbf19c
+      - name: Status
+        run: |
+          echo "Hash: ${{ steps.prml.outputs.hash }}"
+          echo "Status: ${{ steps.prml.outputs.status }}"
