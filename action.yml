@@ -88,12 +88,20 @@ runs:
       shell: bash
       run: |
         python -m pip install --quiet --upgrade pip
-        # Install from git: the PyPI wheel for 0.1.3 omits bundled data files
-        # (hypothesis.schema.yaml, examples/template.yaml). Until 0.1.4 ships
-        # with proper MANIFEST.in, install from the git tag — same source,
-        # full data files, ~15s extra cold-start. See:
+        pip install --quiet "falsify==${{ inputs.falsify-version }}"
+        # Workaround: pyproject.toml in falsify ${{ inputs.falsify-version }} omits
+        # `package-data` for hypothesis.schema.yaml and examples/template.yaml,
+        # so neither the PyPI wheel nor the git source-build ships them.
+        # Fetch them directly from the matching git tag and drop them next
+        # to the installed module. Reverts when falsify 0.1.4 ships with
+        # proper MANIFEST.in. See:
         # https://github.com/studio-11-co/falsify/issues/<TBD>
-        pip install --quiet "git+https://github.com/studio-11-co/falsify.git@v${{ inputs.falsify-version }}"
+        SITE_PKG=$(python -c "import falsify, os; print(os.path.dirname(falsify.__file__))")
+        FALSIFY_TAG="v${{ inputs.falsify-version }}"
+        FALSIFY_RAW="https://raw.githubusercontent.com/studio-11-co/falsify/${FALSIFY_TAG}"
+        curl -fsSL "${FALSIFY_RAW}/hypothesis.schema.yaml" -o "${SITE_PKG}/hypothesis.schema.yaml"
+        mkdir -p "${SITE_PKG}/examples"
+        curl -fsSL "${FALSIFY_RAW}/examples/template.yaml" -o "${SITE_PKG}/examples/template.yaml" || true
         falsify --version
 
     - name: Verify
