@@ -177,6 +177,11 @@ If you find a gap or edge case the spec doesn't handle, [open an issue](https://
 
 ---
 
+## Known limitations
+
+- **`falsify` v0.1.3 packaging gap.** The PyPI wheel for `falsify==0.1.3` omits two bundled data files (`hypothesis.schema.yaml`, `examples/template.yaml`) because `pyproject.toml` does not declare them as `package-data`. Both `falsify lock` and `falsify init` fail with `FileNotFoundError` on a clean install. This Action ships a workaround that fetches the missing files from the matching git tag at install time. The workaround will be removed when `falsify` v0.1.4 ships with proper packaging metadata. Track: [studio-11-co/falsify#packaging](https://github.com/studio-11-co/falsify/issues).
+- **Spec format dual-track.** The PRML manifest format described at [spec.falsify.dev/v0.1](https://spec.falsify.dev/v0.1) (8 YAML fields, content-addressed) and the `falsify` CLI's internal `hypothesis.schema.yaml` (claim / falsification / experiment) are currently distinct. The reconciliation work is part of the v0.2 RFC freeze (2026-05-22). Until then, use the PRML format for registry commits and the hypothesis schema for `falsify lock` flows.
+
 ## License
 
 This Action is MIT-licensed. The PRML specification is CC BY 4.0. The reference [`falsify`](https://github.com/studio-11-co/falsify) toolkit is MIT.
