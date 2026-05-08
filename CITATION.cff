@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use this GitHub Action, please cite it as below."
+title: "prml-verify-action: GitHub Action for PRML manifest verification in CI"
+abstract: >-
+  A composite GitHub Action that verifies Pre-Registered ML Manifest (PRML)
+  v0.1 hashes in continuous integration. Three modes: guard (verify hash
+  against committed file), verdict (also check threshold against eval
+  result), lock (refuse PRs that modify a committed manifest). Wraps the
+  falsify CLI from PyPI; no Docker dependency.
+authors:
+  - family-names: "Öztürk"
+    given-names: "Cüneyt"
+    affiliation: "Studio 11 Turkey Ltd. Şti."
+    email: "cuneyt@studio-11.co"
+type: software
+license: MIT
+repository-code: "https://github.com/studio-11-co/prml-verify-action"
+url: "https://falsify.dev"
+version: "1.0.1"
+date-released: 2026-05-08
+keywords:
+  - "PRML"
+  - "pre-registration"
+  - "GitHub Actions"
+  - "CI"
+  - "ML evaluation"
+identifiers:
+  - type: url
+    value: "https://github.com/marketplace/actions/prml-verify"
+    description: "GitHub Marketplace listing"
+  - type: url
+    value: "https://spec.falsify.dev/v0.1"
+    description: "PRML v0.1 specification"
+preferred-citation:
+  type: software
+  title: "prml-verify-action"
+  authors:
+    - family-names: "Öztürk"
+      given-names: "Cüneyt"
+  year: 2026
+  url: "https://github.com/studio-11-co/prml-verify-action"
+  version: "1.0.1"
