@@ -1,5 +1,7 @@
 # PRML Verify — GitHub Action
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20177839.svg)](https://doi.org/10.5281/zenodo.20177839)
+
 [![PRML locked · 04fa1689ac55](https://registry.falsify.dev/badge/04fa1689ac552fb1f7c3eaf9d0f6c2c0e8c1ca9d4ab6d2fb91a5e7df2c9b62f3.svg)](https://registry.falsify.dev/04fa1689ac552fb1f7c3eaf9d0f6c2c0e8c1ca9d4ab6d2fb91a5e7df2c9b62f3)
 
 > Verify [PRML](https://spec.falsify.dev/v0.1) (Pre-Registered ML Manifest) commitments in CI. Block merges when an evaluation claim was tampered, regressed below threshold, or never locked. Optionally anchor the hash to the public registry.
@@ -198,3 +200,5 @@ Maintained by [Studio 11](https://falsify.dev) · PRML / falsify track lead: [C�
 ## Contributing
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md) and the [`good first issue`](https://github.com/studio-11-co/prml-verify-action/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) label for scoped work.
+
+**Cite the spec:** Öztürk, C. (2026). *PRML v0.1*. Zenodo. [https://doi.org/10.5281/zenodo.20177839](https://doi.org/10.5281/zenodo.20177839)
