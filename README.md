@@ -186,3 +186,15 @@ If you find a gap or edge case the spec doesn't handle, [open an issue](https://
 This Action is MIT-licensed. The PRML specification is CC BY 4.0. The reference [`falsify`](https://github.com/studio-11-co/falsify) toolkit is MIT.
 
 Maintained by [Studio 11](https://falsify.dev) · PRML / falsify track lead: [Cüneyt Öztürk](https://www.linkedin.com/in/cuneyt-ozturk-39812963/) · `hello@studio-11.co`
+
+
+---
+
+## Status
+
+- v0.1 stable. v0.2 RFC open through 2026-05-22 — [spec.falsify.dev/v0.2-rfc](https://spec.falsify.dev/v0.2-rfc).
+- The PRML JSON Schema is in the [SchemaStore catalog](https://www.schemastore.org/json/) (merged 2026-05-11), so `*.prml.yaml` files autocomplete in VS Code, JetBrains, Helix, Zed, and Cursor out of the box.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) and the [`good first issue`](https://github.com/studio-11-co/prml-verify-action/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) label for scoped work.
