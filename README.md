@@ -168,6 +168,14 @@ Read more: [What is PRML?](https://falsify.dev/what-is-prml) · [PRML vs in-toto
 
 ---
 
+## Also see
+
+If your workflow already runs through MLflow, `prml-verify-action` pairs well with [`mlflow-falsify`](https://pypi.org/project/mlflow-falsify/) — a tiny MLflow Run Context Provider plugin (`pip install mlflow-falsify`) that auto-tags every `mlflow.start_run()` with the PRML manifest hash plus the metric, comparator, threshold, and dataset id. Zero workflow change required. Source: [`studio-11-co/mlflow-falsify`](https://github.com/studio-11-co/mlflow-falsify).
+
+For the JavaScript / Node.js side of the same canonicalization: [`falsify-js`](https://www.npmjs.com/package/falsify-js) on npm.
+
+---
+
 ## Spec status
 
 - v0.1.3 working draft, public review
