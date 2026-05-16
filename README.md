@@ -84,7 +84,7 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
 | `registry-url` | no | `https://registry.falsify.dev` | Registry endpoint |
 | `registry-handle` | no | repo owner | Submitter handle on the registry commit |
 | `python-version` | no | `3.11` | Python version |
-| `falsify-version` | no | `0.1.3` | falsify package version |
+| `falsify-version` | no | `0.1.4` | falsify package version |
 | `working-directory` | no | `.` | Path containing `.falsify/` |
 
 ## Outputs
@@ -144,7 +144,7 @@ The `badge-snippet` output is a paste-ready Markdown string like:
 - uses: studio-11-co/prml-verify-action@v1
   with:
     mode: guard
-    falsify-version: 0.1.3
+    falsify-version: 0.1.4
 - run: ./deploy-to-prod.sh
   if: steps.prml.outputs.status == 'pass'
 ```
