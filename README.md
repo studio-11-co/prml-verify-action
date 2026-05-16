@@ -178,7 +178,7 @@ For the JavaScript / Node.js side of the same canonicalization: [`falsify-js`](h
 
 ## Spec status
 
-- v0.1.3 working draft, public review
+- v0.1.4 stable release (PRML v0.1 specification)
 - v0.2 RFC freeze: 2026-05-22
 - Spec license: CC BY 4.0
 - Reference implementations: Python · JavaScript · Go · Rust (byte-equivalent across 12 conformance vectors)
