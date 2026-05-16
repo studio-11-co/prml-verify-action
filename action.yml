@@ -216,23 +216,7 @@ runs:
                          exit 2 ;;
             esac
             echo "::group::Schema validation ($PRML_SCHEMA_VERSION) against $PRML_MANIFEST_PATH"
-            python <<PYEOF
-import json, sys, urllib.request, yaml, jsonschema
-schema_url = "${SCHEMA_URL}"
-manifest_path = "${PRML_MANIFEST_PATH}"
-with urllib.request.urlopen(schema_url) as r:
-    schema = json.loads(r.read())
-with open(manifest_path) as f:
-    manifest = yaml.safe_load(f)
-try:
-    jsonschema.validate(instance=manifest, schema=schema)
-    print(f"PASS — manifest validates against PRML ${PRML_SCHEMA_VERSION}")
-except jsonschema.ValidationError as exc:
-    print(f"FAIL — schema validation error:")
-    print(f"  at path: {list(exc.absolute_path)}")
-    print(f"  message: {exc.message}")
-    sys.exit(10)
-PYEOF
+            python "${{ github.action_path }}/scripts/schema_validate.py" "$SCHEMA_URL" "$PRML_MANIFEST_PATH" "$PRML_SCHEMA_VERSION"
             EXIT=$?
             echo "::endgroup::"
             case "$EXIT" in
