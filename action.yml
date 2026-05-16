@@ -13,6 +13,10 @@ inputs:
       - "guard" (default): scan all .falsify/ claims, fail on any FAIL/STALE
       - "verdict": check one specific claim by name (requires `claim` input)
       - "lock": hash and freeze a claim (one-time pre-registration; rare in CI)
+      - "schema-only": validate a PRML YAML against the v0.1 / v0.2-RFC JSON
+        Schema (no lock needed, no `.falsify/` tree required). Use when a repo
+        ships a single canonical manifest at a known path and only wants
+        schema-shape checks in CI.
     required: false
     default: 'guard'
 
@@ -20,6 +24,20 @@ inputs:
     description: 'Claim name (required when mode=verdict or mode=lock)'
     required: false
     default: ''
+
+  manifest-path:
+    description: |
+      Path to a PRML manifest YAML (required when mode=schema-only).
+      Relative to working-directory.
+    required: false
+    default: ''
+
+  schema-version:
+    description: |
+      PRML schema version to validate against in mode=schema-only.
+      One of: "v0.1" (default, stable) or "v0.2-rfc" (open through 2026-05-22).
+    required: false
+    default: 'v0.1'
 
   expected-hash:
     description: |
@@ -88,7 +106,7 @@ runs:
       shell: bash
       run: |
         python -m pip install --quiet --upgrade pip
-        pip install --quiet "falsify==${{ inputs.falsify-version }}"
+        pip install --quiet "falsify==${{ inputs.falsify-version }}" jsonschema pyyaml
         falsify --version
 
     - name: Verify
@@ -99,6 +117,8 @@ runs:
         PRML_MODE: ${{ inputs.mode }}
         PRML_CLAIM: ${{ inputs.claim }}
         PRML_EXPECTED_HASH: ${{ inputs.expected-hash }}
+        PRML_MANIFEST_PATH: ${{ inputs.manifest-path }}
+        PRML_SCHEMA_VERSION: ${{ inputs.schema-version }}
         PRML_ANCHOR: ${{ inputs.anchor-to-registry }}
         PRML_REGISTRY: ${{ inputs.registry-url }}
         PRML_HANDLE: ${{ inputs.registry-handle }}
@@ -180,8 +200,50 @@ runs:
             [ "$EXIT" -ne 0 ] && STATUS="inconclusive"
             ;;
 
+          schema-only)
+            if [ -z "$PRML_MANIFEST_PATH" ]; then
+              echo "::error::mode=schema-only requires the 'manifest-path' input."
+              exit 2
+            fi
+            if [ ! -f "$PRML_MANIFEST_PATH" ]; then
+              echo "::error::manifest not found at $PRML_MANIFEST_PATH"
+              exit 2
+            fi
+            case "$PRML_SCHEMA_VERSION" in
+              v0.1)      SCHEMA_URL="https://spec.falsify.dev/schema/prml-v0.1.schema.json" ;;
+              v0.2-rfc)  SCHEMA_URL="https://spec.falsify.dev/schema/prml-v0.2.schema.json" ;;
+              *)         echo "::error::Unknown schema-version '$PRML_SCHEMA_VERSION'. Use v0.1 or v0.2-rfc."
+                         exit 2 ;;
+            esac
+            echo "::group::Schema validation ($PRML_SCHEMA_VERSION) against $PRML_MANIFEST_PATH"
+            python <<PYEOF
+import json, sys, urllib.request, yaml, jsonschema
+schema_url = "${SCHEMA_URL}"
+manifest_path = "${PRML_MANIFEST_PATH}"
+with urllib.request.urlopen(schema_url) as r:
+    schema = json.loads(r.read())
+with open(manifest_path) as f:
+    manifest = yaml.safe_load(f)
+try:
+    jsonschema.validate(instance=manifest, schema=schema)
+    print(f"PASS — manifest validates against PRML ${PRML_SCHEMA_VERSION}")
+except jsonschema.ValidationError as exc:
+    print(f"FAIL — schema validation error:")
+    print(f"  at path: {list(exc.absolute_path)}")
+    print(f"  message: {exc.message}")
+    sys.exit(10)
+PYEOF
+            EXIT=$?
+            echo "::endgroup::"
+            case "$EXIT" in
+              0)  STATUS="pass" ;;
+              10) STATUS="fail" ;;
+              *)  STATUS="inconclusive" ;;
+            esac
+            ;;
+
           *)
-            echo "::error::Unknown mode '$PRML_MODE'. Use guard / verdict / lock."
+            echo "::error::Unknown mode '$PRML_MODE'. Use guard / verdict / lock / schema-only."
             exit 2
             ;;
         esac

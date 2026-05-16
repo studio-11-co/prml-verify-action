@@ -27,6 +27,7 @@ This Action wraps the [`falsify`](https://github.com/studio-11-co/falsify) refer
 | `guard` (default) | Scans every claim under `.falsify/`. Fails if any is FAIL or STALE. Use as a CI gate. | 0 PASS · 10 FAIL · 3 TAMPER |
 | `verdict` | Checks one specific claim by name. | 0 PASS · 10 FAIL · 3 TAMPER |
 | `lock` | Hashes and freezes a claim. Rare in CI — usually a one-time pre-registration step run locally before the experiment. | 0 |
+| `schema-only` | Validates a PRML YAML against the v0.1 / v0.2-RFC JSON Schema (no `.falsify/` tree required, no lock needed). For repos that ship a single canonical manifest at a known path. | 0 PASS · 10 FAIL · 2 IO |
 
 It can also optionally **POST your manifest to [registry.falsify.dev](https://registry.falsify.dev)** so the receipt is publicly re-derivable from a permalink (with a README badge).
 
@@ -77,8 +78,10 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `mode` | no | `guard` | `guard` / `verdict` / `lock` |
+| `mode` | no | `guard` | `guard` / `verdict` / `lock` / `schema-only` |
 | `claim` | when `mode=verdict` or `mode=lock` | `` | Claim name |
+| `manifest-path` | when `mode=schema-only` | `` | Path to manifest YAML to schema-validate |
+| `schema-version` | no | `v0.1` | `v0.1` (stable) or `v0.2-rfc` (open through 2026-05-22) |
 | `expected-hash` | no | `` | Pin a SHA-256 hash; mismatch → exit 3 |
 | `anchor-to-registry` | no | `false` | If `true`, POST manifest to `registry-url` and emit `permalink` |
 | `registry-url` | no | `https://registry.falsify.dev` | Registry endpoint |
@@ -117,6 +120,21 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
     claim: imagenet-resnet50-baseline
     expected-hash: fb7403c40afe63d892bf4aea2c123fdd7fe85366b74a277875465c4cb3cbf19c
 ```
+
+### Schema-only mode (no `.falsify/` tree, single canonical manifest)
+
+For repos that ship one PRML manifest at a known path and only want a schema-shape check in CI:
+
+```yaml
+- uses: actions/checkout@v6
+- uses: studio-11-co/prml-verify-action@v1
+  with:
+    mode: schema-only
+    manifest-path: claims/cv-screening.prml.yaml
+    schema-version: v0.1
+```
+
+Exit codes: `0` PASS, `10` schema validation FAIL, `2` IO / bad inputs. Works against the live JSON Schemas at `https://spec.falsify.dev/schema/` (the same ones merged into the SchemaStore catalog).
 
 ### Anchor a verified claim to the public registry, surface a README badge
 
