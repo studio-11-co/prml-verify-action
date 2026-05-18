@@ -192,6 +192,16 @@ If your workflow already runs through MLflow, `prml-verify-action` pairs well wi
 
 For the JavaScript / Node.js side of the same canonicalization: [`falsify-js`](https://www.npmjs.com/package/falsify-js) on npm.
 
+For execution-integrity beyond what PRML §8.1 covers, pair this action with [`cosign`](https://docs.sigstore.dev/cosign/) — the cookbook walks through it as [Pattern 11: PRML + Sigstore](https://github.com/studio-11-co/falsify-cookbook/blob/main/patterns/11-sigstore-execution.md).
+
+## Audit & compliance crosswalks
+
+Subcategory-by-subcategory maps from major AI governance frameworks to PRML fields (FULL / PARTIAL / NONE tagged):
+
+- [EU AI Act Article 12](https://spec.falsify.dev/eu-ai-act/article-12/) — code-level pattern for the 2 August 2026 high-risk deadline
+- [NIST AI RMF 1.0](https://spec.falsify.dev/nist-ai-rmf/) — GOVERN / MAP / MEASURE / MANAGE subcategory map
+- [ISO/IEC 42001:2023](https://spec.falsify.dev/iso-42001/) — AI Management System clause-by-clause evidence map
+
 ---
 
 ## Spec status
