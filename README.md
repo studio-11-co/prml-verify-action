@@ -6,6 +6,8 @@
 
 > Verify [PRML](https://spec.falsify.dev/v0.1) (Pre-Registered ML Manifest) commitments in CI. Block merges when an evaluation claim was tampered, regressed below threshold, or never locked. Optionally anchor the hash to the public registry.
 
+[![60-second PRML walkthrough — paste, lock, receipt, badge](https://spec.falsify.dev/demo/demo.gif)](https://spec.falsify.dev/demo/)
+
 **TL;DR — drop this in your workflow:**
 
 ```yaml
