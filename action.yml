@@ -1,6 +1,6 @@
 name: 'PRML Verify'
 description: 'Verify PRML commitments in CI. Block merges on tampered or regressed eval claims. Optional public registry anchor.'
-author: 'Studio 11 · falsify track'
+author: 'Cüneyt Öztürk'
 
 branding:
   icon: 'check-circle'

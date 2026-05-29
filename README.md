@@ -225,7 +225,7 @@ If you find a gap or edge case the spec doesn't handle, [open an issue](https://
 
 This Action is MIT-licensed. The PRML specification is CC BY 4.0. The reference [`falsify`](https://github.com/studio-11-co/falsify) toolkit is MIT.
 
-Maintained by [Studio 11](https://falsify.dev) · PRML / falsify track lead: [Cüneyt Öztürk](https://www.linkedin.com/in/cuneyt-ozturk-39812963/) · `hello@studio-11.co`
+Maintained by [Cüneyt Öztürk](https://falsify.dev) · PRML / falsify track lead: [Cüneyt Öztürk](https://www.linkedin.com/in/cuneyt-ozturk-39812963/) · `hello@falsify.dev`
 
 
 ---
