@@ -22,14 +22,15 @@ If `.falsify/` exists in your repo, this will fail the build on any tampered or 
 
 [PRML](https://spec.falsify.dev/v0.1) is a small open spec (CC BY 4.0) for committing an ML evaluation claim — metric, threshold, dataset split, model version — to a SHA-256 hash **before** the run. The hash is a tamper-evident receipt anyone can re-derive against the canonical bytes.
 
-This Action wraps the [`falsify`](https://github.com/studio-11-co/falsify) reference CLI as a composite GitHub Action. Three modes:
+This Action wraps the [`falsify`](https://github.com/studio-11-co/falsify) reference CLI (and its `falsify-engine` companion) as a composite GitHub Action. Modes:
 
 | Mode | What it does | Exit codes |
 |---|---|---|
-| `guard` (default) | Scans every claim under `.falsify/`. Fails if any is FAIL or STALE. Use as a CI gate. | 0 PASS · 10 FAIL · 3 TAMPER |
-| `verdict` | Checks one specific claim by name. | 0 PASS · 10 FAIL · 3 TAMPER |
-| `lock` | Hashes and freezes a claim. Rare in CI — usually a one-time pre-registration step run locally before the experiment. | 0 |
-| `schema-only` | Validates a PRML YAML against the v0.1 / v0.2-RFC JSON Schema (no `.falsify/` tree required, no lock needed). For repos that ship a single canonical manifest at a known path. | 0 PASS · 10 FAIL · 2 IO |
+| `manifest` | **Verify a PRML manifest's SHA-256 (hash/tamper)** and, with `observed`, evaluate the predicate. Pin with `expected-hash` or commit the `.prml.sha256` sidecar. The PRML-manifest verifier. | 0 PASS · 10 FAIL · 3 TAMPER |
+| `guard` (default) | Scans every claim under `.falsify/` via the workflow engine (`falsify-engine`). Fails if any is FAIL or STALE. | 0 PASS · 10 FAIL · 3 TAMPER |
+| `verdict` | Checks one engine claim by name. | 0 PASS · 10 FAIL · 3 TAMPER |
+| `lock` | Hashes and freezes an engine claim. Rare in CI. | 0 |
+| `schema-only` | Validates a PRML YAML against the v0.1 / v0.2-RFC JSON Schema (shape only, no hash). For repos that ship a single canonical manifest at a known path. | 0 PASS · 10 FAIL · 2 IO |
 
 It can also optionally **POST your manifest to [registry.falsify.dev](https://registry.falsify.dev)** so the receipt is publicly re-derivable from a permalink (with a README badge).
 
@@ -47,16 +48,18 @@ What this does **not** solve, named explicitly in §8.1 of the spec: selective n
 
 ## Quickstart
 
-### 1. Lock a claim locally (one-time, before CI)
+### 1. Lock a PRML manifest locally (one-time, before CI)
 
 ```bash
 pip install falsify
-falsify init my-accuracy-claim     # creates .falsify/my-accuracy-claim/spec.yaml
-# edit spec.yaml: metric, threshold, dataset_split, model_version, claim, submitter
-falsify lock my-accuracy-claim     # hashes the canonical bytes
+falsify init accuracy.prml.yaml    # skeleton manifest
+# edit accuracy.prml.yaml: metric, comparator, threshold, dataset.hash, seed, producer
+falsify lock accuracy.prml.yaml    # canonicalize + SHA-256 + write accuracy.prml.prml.sha256
 ```
 
-Commit the resulting `.falsify/` directory to your repo.
+Commit `accuracy.prml.yaml` (and its `.prml.sha256` sidecar) to your repo, then gate CI with `mode: manifest`.
+
+> The `.falsify/<name>/` workflow-engine flow (`init` → `lock` → `run` → `verdict` → `guard`) uses the `falsify-engine` command from the same install; drive it with `mode: guard` / `verdict`.
 
 ### 2. Add the Action to your workflow
 

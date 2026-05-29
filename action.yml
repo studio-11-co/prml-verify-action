@@ -10,13 +10,18 @@ inputs:
   mode:
     description: |
       Verification mode:
-      - "guard" (default): scan all .falsify/ claims, fail on any FAIL/STALE
-      - "verdict": check one specific claim by name (requires `claim` input)
-      - "lock": hash and freeze a claim (one-time pre-registration; rare in CI)
+      - "manifest": verify a PRML manifest's SHA-256 (hash/tamper) and, if
+        `observed` is set, evaluate the predicate. Requires `manifest-path`.
+        This is the PRML-manifest verifier — runs the `falsify` reference CLI.
+        Exit 0 PASS · 3 TAMPERED (hash mismatch) · 10 FAIL (below threshold).
+      - "guard" (default): scan all .falsify/ claims via the workflow engine,
+        fail on any FAIL/STALE.
+      - "verdict": check one engine claim by name (requires `claim` input).
+      - "lock": hash and freeze an engine claim (rare in CI).
       - "schema-only": validate a PRML YAML against the v0.1 / v0.2-RFC JSON
-        Schema (no lock needed, no `.falsify/` tree required). Use when a repo
-        ships a single canonical manifest at a known path and only wants
-        schema-shape checks in CI.
+        Schema (shape only, no hash). Requires `manifest-path`.
+      Note: guard/verdict/lock drive the `falsify-engine` workflow CLI;
+      manifest/schema-only operate on a standalone `*.prml.yaml`.
     required: false
     default: 'guard'
 
@@ -27,8 +32,15 @@ inputs:
 
   manifest-path:
     description: |
-      Path to a PRML manifest YAML (required when mode=schema-only).
-      Relative to working-directory.
+      Path to a PRML manifest YAML (required when mode=manifest or
+      mode=schema-only). Relative to working-directory.
+    required: false
+    default: ''
+
+  observed:
+    description: |
+      Observed metric value (mode=manifest). If set, the action evaluates the
+      manifest's predicate and exits 10 (FAIL) if it does not hold.
     required: false
     default: ''
 
@@ -71,9 +83,9 @@ inputs:
     default: '3.11'
 
   falsify-version:
-    description: 'falsify package version pinned for reproducibility (default: 0.1.4).'
+    description: 'falsify package version pinned for reproducibility (default: 0.3.0; ships both the `falsify` PRML CLI and `falsify-engine`).'
     required: false
-    default: '0.1.4'
+    default: '0.3.0'
 
   working-directory:
     description: 'Path to the repository root that contains .falsify/.'
@@ -118,6 +130,7 @@ runs:
         PRML_CLAIM: ${{ inputs.claim }}
         PRML_EXPECTED_HASH: ${{ inputs.expected-hash }}
         PRML_MANIFEST_PATH: ${{ inputs.manifest-path }}
+        PRML_OBSERVED: ${{ inputs.observed }}
         PRML_SCHEMA_VERSION: ${{ inputs.schema-version }}
         PRML_ANCHOR: ${{ inputs.anchor-to-registry }}
         PRML_REGISTRY: ${{ inputs.registry-url }}
@@ -139,9 +152,35 @@ runs:
         EXIT=0
 
         case "$PRML_MODE" in
+          manifest)
+            if [ -z "$PRML_MANIFEST_PATH" ]; then
+              echo "::error::mode=manifest requires the 'manifest-path' input."
+              exit 2
+            fi
+            if [ ! -f "$PRML_MANIFEST_PATH" ]; then
+              echo "::error::manifest not found at $PRML_MANIFEST_PATH"
+              exit 2
+            fi
+            VARGS=("$PRML_MANIFEST_PATH")
+            [ -n "$PRML_EXPECTED_HASH" ] && VARGS+=(--expected-hash "$PRML_EXPECTED_HASH")
+            [ -n "$PRML_OBSERVED" ] && VARGS+=(--observed "$PRML_OBSERVED")
+            echo "::group::falsify verify $PRML_MANIFEST_PATH"
+            falsify verify "${VARGS[@]}"
+            EXIT=$?
+            echo "::endgroup::"
+            HASH=$(falsify hash "$PRML_MANIFEST_PATH" 2>/dev/null || true)
+            [ -n "$HASH" ] && echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+            case "$EXIT" in
+              0)  STATUS="pass" ;;
+              10) STATUS="fail" ;;
+              3)  STATUS="tamper" ;;
+              *)  STATUS="inconclusive" ;;
+            esac
+            ;;
+
           guard)
-            echo "::group::falsify guard (scanning all claims)"
-            falsify guard
+            echo "::group::falsify-engine guard (scanning all claims)"
+            falsify-engine guard
             EXIT=$?
             echo "::endgroup::"
             case "$EXIT" in
@@ -157,8 +196,8 @@ runs:
               echo "::error::mode=verdict requires the 'claim' input."
               exit 2
             fi
-            echo "::group::falsify verdict $PRML_CLAIM"
-            falsify verdict "$PRML_CLAIM"
+            echo "::group::falsify-engine verdict $PRML_CLAIM"
+            falsify-engine verdict "$PRML_CLAIM"
             EXIT=$?
             echo "::endgroup::"
 
@@ -192,8 +231,8 @@ runs:
               echo "::error::mode=lock requires the 'claim' input."
               exit 2
             fi
-            echo "::group::falsify lock $PRML_CLAIM"
-            falsify lock "$PRML_CLAIM"
+            echo "::group::falsify-engine lock $PRML_CLAIM"
+            falsify-engine lock "$PRML_CLAIM"
             EXIT=$?
             echo "::endgroup::"
             STATUS="pass"
@@ -227,7 +266,7 @@ runs:
             ;;
 
           *)
-            echo "::error::Unknown mode '$PRML_MODE'. Use guard / verdict / lock / schema-only."
+            echo "::error::Unknown mode '$PRML_MODE'. Use manifest / guard / verdict / lock / schema-only."
             exit 2
             ;;
         esac

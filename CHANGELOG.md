@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.0.0 — 2026-05-30
+
+### Added
+
+- **`manifest` mode** — verifies a PRML manifest's SHA-256 (hash/tamper) via the `falsify` reference CLI, and evaluates the predicate when `observed` is set. The genuine PRML-manifest verifier (exit 0 PASS · 3 TAMPER · 10 FAIL). Pin with `expected-hash` or commit the `.prml.sha256` sidecar. New `observed` input.
+
+### Changed
+
+- **Default `falsify-version` bumped `0.1.4` → `0.3.0`.** As of falsify 0.3.0 the `falsify` command is the PRML manifest CLI; the pre-registration workflow engine is the `falsify-engine` command (same install).
+- The `guard` / `verdict` / `lock` modes now invoke `falsify-engine`, so their behavior is unchanged for existing consumers — the action handles the switch internally.
+
+### Notes
+
+- `guard`/`verdict`/`lock` consumers need no workflow change. To stay on the old 0.1.x layout (where `falsify` *was* the engine), pin `falsify-version: 0.1.4`.
+
 ## v1.0.1 — 2026-05-08
 
 ### Fixed
