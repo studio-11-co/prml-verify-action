@@ -109,16 +109,23 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Set up Python ${{ inputs.python-version }}
-      uses: actions/setup-python@v6
+    - name: Set up Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install falsify ${{ inputs.falsify-version }}
+    - name: Install falsify
       shell: bash
+      env:
+        FALSIFY_VERSION: ${{ inputs.falsify-version }}
       run: |
+        set -euo pipefail
+        if ! printf '%s' "$FALSIFY_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$'; then
+          echo "::error::Invalid falsify-version '$FALSIFY_VERSION' (expected semver, e.g. 0.3.0)."
+          exit 2
+        fi
         python -m pip install --quiet --upgrade pip
-        pip install --quiet "falsify==${{ inputs.falsify-version }}" jsonschema pyyaml
+        pip install --quiet "falsify==${FALSIFY_VERSION}" jsonschema pyyaml
         falsify --version
 
     - name: Verify
@@ -136,6 +143,7 @@ runs:
         PRML_REGISTRY: ${{ inputs.registry-url }}
         PRML_HANDLE: ${{ inputs.registry-handle }}
         GH_REPO_OWNER: ${{ github.repository_owner }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         set -uo pipefail
 
@@ -204,7 +212,7 @@ runs:
             # Hash the locked spec for output
             LOCKED=".falsify/${PRML_CLAIM}/spec.lock.json"
             if [ -f "$LOCKED" ]; then
-              HASH=$(python -c "import json,sys; d=json.load(open('$LOCKED')); print(d.get('hash',''))" 2>/dev/null || true)
+              HASH=$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("hash",""))' "$LOCKED" 2>/dev/null || true)
               if [ -n "$HASH" ]; then
                 echo "hash=$HASH" >> "$GITHUB_OUTPUT"
               fi
@@ -255,7 +263,7 @@ runs:
                          exit 2 ;;
             esac
             echo "::group::Schema validation ($PRML_SCHEMA_VERSION) against $PRML_MANIFEST_PATH"
-            python "${{ github.action_path }}/scripts/schema_validate.py" "$SCHEMA_URL" "$PRML_MANIFEST_PATH" "$PRML_SCHEMA_VERSION"
+            python "$ACTION_PATH/scripts/schema_validate.py" "$SCHEMA_URL" "$PRML_MANIFEST_PATH" "$PRML_SCHEMA_VERSION"
             EXIT=$?
             echo "::endgroup::"
             case "$EXIT" in
@@ -276,13 +284,22 @@ runs:
         # Optional: anchor to public registry (best-effort, non-fatal)
         if [ "$PRML_ANCHOR" = "true" ] && [ "$STATUS" != "tamper" ] && [ -n "$PRML_CLAIM" ]; then
           MANIFEST_PATH=".falsify/${PRML_CLAIM}/spec.yaml"
-          if [ -f "$MANIFEST_PATH" ]; then
+          REG_OK=0
+          case "$PRML_REGISTRY" in
+            https://*) REG_OK=1 ;;
+            *) echo "::warning::registry-url must start with https:// (got '$PRML_REGISTRY'); skipping registry anchor" ;;
+          esac
+          if [ "$REG_OK" = "1" ] && [ -f "$MANIFEST_PATH" ]; then
             echo "::group::Anchor to ${PRML_REGISTRY}"
-            ANCHOR_OUT=$(python "${{ github.action_path }}/scripts/anchor.py" "$MANIFEST_PATH" "$PRML_REGISTRY" "$HANDLE" 2>&1 || true)
+            ANCHOR_OUT=$(python "$ACTION_PATH/scripts/anchor.py" "$MANIFEST_PATH" "$PRML_REGISTRY" "$HANDLE" 2>&1 || true)
             echo "$ANCHOR_OUT"
             echo "::endgroup::"
-            HASH=$(echo "$ANCHOR_OUT" | grep '^hash=' | cut -d= -f2-)
-            PERMALINK=$(echo "$ANCHOR_OUT" | grep '^permalink=' | cut -d= -f2-)
+            HASH=$(echo "$ANCHOR_OUT" | grep '^hash=' | cut -d= -f2- | tr -d '\r\n')
+            PERMALINK=$(echo "$ANCHOR_OUT" | grep '^permalink=' | cut -d= -f2- | tr -d '\r\n')
+            # Harden before writing to $GITHUB_OUTPUT: hash must be 64 hex chars,
+            # permalink must be an https URL. Reject anything else (output injection).
+            printf '%s' "$HASH" | grep -qE '^[0-9a-f]{64}$' || HASH=""
+            case "$PERMALINK" in https://*) : ;; *) PERMALINK="" ;; esac
             if [ -n "$HASH" ]; then
               echo "hash=$HASH" >> "$GITHUB_OUTPUT"
               echo "permalink=$PERMALINK" >> "$GITHUB_OUTPUT"
