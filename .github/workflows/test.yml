@@ -57,3 +57,58 @@ jobs:
           EOF
           falsify lock smoke-claim
           echo "End-to-end install + lock OK"
+
+  action-integration:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare a manifest and compute its hash
+        id: prep
+        run: |
+          set -euo pipefail
+          pip install --quiet falsify==0.3.0
+          cat > claim.prml.yaml <<'EOF'
+          version: prml/0.1
+          claim_id: "01900000-0000-7000-8000-000000000000"
+          created_at: "2026-05-01T12:00:00Z"
+          metric: accuracy
+          comparator: ">="
+          threshold: 0.90
+          dataset:
+            id: imagenet-val-2012
+            hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          seed: 42
+          producer:
+            id: acme.example
+          EOF
+          H=$(falsify hash claim.prml.yaml | grep -oE '[0-9a-f]{64}' | head -1)
+          test -n "$H" || { echo "could not compute hash"; exit 1; }
+          echo "hash=$H" >> "$GITHUB_OUTPUT"
+
+      - name: PASS — correct hash and satisfying observed
+        uses: ./
+        with:
+          mode: manifest
+          manifest-path: claim.prml.yaml
+          expected-hash: ${{ steps.prep.outputs.hash }}
+          observed: '0.95'
+
+      - name: TAMPER — wrong expected hash must be flagged
+        id: tamper
+        continue-on-error: true
+        uses: ./
+        with:
+          mode: manifest
+          manifest-path: claim.prml.yaml
+          expected-hash: '0000000000000000000000000000000000000000000000000000000000000000'
+
+      - name: Assert tamper was detected
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.tamper.outputs.status }}" != "tamper" ]; then
+            echo "expected status=tamper, got '${{ steps.tamper.outputs.status }}'"; exit 1
+          fi
+          if [ "${{ steps.tamper.outcome }}" != "failure" ]; then
+            echo "expected tamper step to exit non-zero (3)"; exit 1
+          fi
+          echo "tamper correctly detected; integration test OK"
