@@ -145,7 +145,11 @@ runs:
         GH_REPO_OWNER: ${{ github.repository_owner }}
         ACTION_PATH: ${{ github.action_path }}
       run: |
-        set -uo pipefail
+        # GitHub invokes composite `shell: bash` with -e (errexit). This script
+        # is built around capturing `EXIT=$?` from falsify (which returns 3/10
+        # on TAMPER/FAIL by design), so errexit must be OFF or those non-zero
+        # results abort the step before the status is mapped. Keep pipefail.
+        set +e -o pipefail
 
         # Resolve handle (input wins, otherwise GitHub repo owner)
         HANDLE="${PRML_HANDLE:-${GH_REPO_OWNER:-anonymous}}"
