@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.0.2 — 2026-05-31
+
+### Changed
+
+- Default `falsify-version` bumped `0.3.0` → `0.3.1`, so `@v2` installs the PRML CLI that includes the integer-valued `threshold` canonicalization fix (v0.1 threshold renders as float, matching the JS/Go/Rust reference impls). No input/output changes.
+- README: corrected stale `falsify-version` references (`0.1.4` → `0.3.1`), updated the Spec status block, and fixed the conformance-vector count (`12` → `20`: 12 v0.1 + 8 v0.2).
+
 ## v2.0.1 — 2026-05-31
 
 ### Fixed
