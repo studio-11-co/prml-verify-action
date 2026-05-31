@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.0.1 — 2026-05-31
+
+### Fixed
+
+- **`manifest` / `guard` modes no longer crash on a clean run.** `HASH` / `PERMALINK` were unset in modes that do not anchor to the registry, so the step summary aborted with `unbound variable` under `set -u` even when verification passed. They are now initialised.
+- **TAMPER / FAIL results are now reported correctly.** GitHub runs composite `shell: bash` with `-e` (errexit). Because `falsify` returns exit 3 (TAMPER) and 10 (FAIL) by design, the verify line aborted the step before the exit code was captured and mapped, leaving `status=inconclusive`. The script now runs with `set +e -o pipefail` so those codes are mapped to `tamper` / `fail`.
+
+### Security
+
+- Removed `${{ }}` template interpolation from `run:` shell bodies: `falsify-version` now flows through an env var with a semver-format check, and `github.action_path` through an `ACTION_PATH` env var.
+- The locked-spec path is passed to `python` via `argv` instead of an f-string, so a claim name cannot break out of the inline script.
+- `registry-url` is validated as `https://`, and the registry's returned hash/permalink are validated (hex / https) and stripped of newlines before being written to `$GITHUB_OUTPUT`.
+- Pinned `actions/setup-python` to a commit SHA (v6.2.0).
+
+### Added
+
+- End-to-end integration self-test that runs the action via `uses: ./` in `manifest` mode (PASS and TAMPER), which is what surfaced the two fixes above.
+
+### Notes
+
+- No input or output changes. `@v2` consumers pick up these fixes automatically on the next run.
+
 ## v2.0.0 — 2026-05-30
 
 ### Added
