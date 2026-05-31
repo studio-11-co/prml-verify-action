@@ -158,6 +158,10 @@ runs:
 
         STATUS="inconclusive"
         EXIT=0
+        # Initialise so the summary block is safe under `set -u` in modes that
+        # never assign them (e.g. manifest/guard without registry anchoring).
+        HASH=""
+        PERMALINK=""
 
         case "$PRML_MODE" in
           manifest)
