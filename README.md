@@ -203,7 +203,7 @@ For execution-integrity beyond what PRML §8.1 covers, pair this action with [`c
 
 Subcategory-by-subcategory maps from major AI governance frameworks to PRML fields (FULL / PARTIAL / NONE tagged):
 
-- [EU AI Act Article 12](https://spec.falsify.dev/eu-ai-act/article-12/) — code-level pattern for the 2 August 2026 high-risk deadline
+- [EU AI Act Article 12](https://spec.falsify.dev/eu-ai-act/article-12/) — code-level pattern for the 2 December 2027 high-risk deadline
 - [NIST AI RMF 1.0](https://spec.falsify.dev/nist-ai-rmf/) — GOVERN / MAP / MEASURE / MANAGE subcategory map
 - [ISO/IEC 42001:2023](https://spec.falsify.dev/iso-42001/) — AI Management System clause-by-clause evidence map
 
@@ -222,7 +222,7 @@ If you find a gap or edge case the spec doesn't handle, [open an issue](https://
 
 ## Known limitations
 
-- **Spec format dual-track.** The PRML manifest format described at [spec.falsify.dev/v0.1](https://spec.falsify.dev/v0.1) (8 YAML fields, content-addressed) and the `falsify` CLI's internal `hypothesis.schema.yaml` (claim / falsification / experiment) are currently distinct. The reconciliation work is part of the v0.2 RFC freeze (2026-05-22). Until then, use the PRML format for registry commits and the hypothesis schema for `falsify lock` flows.
+- **Spec format dual-track.** The PRML manifest format described at [spec.falsify.dev/v0.1](https://spec.falsify.dev/v0.1) (9 YAML fields, content-addressed) and the `falsify` CLI's internal `hypothesis.schema.yaml` (claim / falsification / experiment) are currently distinct. The reconciliation work is part of the v0.2 RFC freeze (2026-05-22). Until then, use the PRML format for registry commits and the hypothesis schema for `falsify lock` flows.
 
 ## License
 
