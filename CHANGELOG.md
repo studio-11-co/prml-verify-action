@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.0.3 — 2026-06-02
+
+### Changed
+
+- README/CONTRIBUTING: updated the conformance-vector count to **21 (13 v0.1 + 8 v0.2)** following the addition of vector TV-013 (integer-valued threshold) to the v0.1 normative suite. Docs only; no input/output or behaviour changes.
+
 ## v2.0.2 — 2026-05-31
 
 ### Changed

@@ -214,7 +214,7 @@ Subcategory-by-subcategory maps from major AI governance frameworks to PRML fiel
 - PRML v0.1 stable; falsify CLI 0.3.1 (PyPI)
 - v0.2 RFC frozen: 2026-05-22 (comment window closed)
 - Spec license: CC BY 4.0
-- Reference implementations: Python · JavaScript · Go · Rust (byte-equivalent across 20 conformance vectors: 12 v0.1 + 8 v0.2)
+- Reference implementations: Python · JavaScript · Go · Rust (byte-equivalent across 21 conformance vectors: 13 v0.1 + 8 v0.2)
 
 If you find a gap or edge case the spec doesn't handle, [open an issue](https://github.com/studio-11-co/falsify/issues) before the freeze date — that's how v0.2 gets sharper.
 
