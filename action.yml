@@ -83,9 +83,9 @@ inputs:
     default: '3.11'
 
   falsify-version:
-    description: 'Version of the single `falsify` PyPI package, pinned for reproducibility (default: 0.3.1). That one package provides both commands used here: the `falsify` PRML CLI and the `falsify-engine` command. There is no separate `falsify-engine` package to install.'
+    description: 'Version of the single `falsify` PyPI package, pinned for reproducibility (default: 0.3.10). That one package provides both commands used here: the `falsify` PRML CLI and the `falsify-engine` command. There is no separate `falsify-engine` package to install.'
     required: false
-    default: '0.3.1'
+    default: '0.3.10'
 
   working-directory:
     description: 'Path to the repository root that contains .falsify/.'
