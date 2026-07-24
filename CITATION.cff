@@ -16,7 +16,7 @@ type: software
 license: MIT
 repository-code: "https://github.com/studio-11-co/prml-verify-action"
 url: "https://falsify.dev"
-version: "1.1.0"
+version: "2.0.3"
 date-released: 2026-05-16
 keywords:
   - "PRML"
@@ -39,4 +39,4 @@ preferred-citation:
       given-names: "Cüneyt"
   year: 2026
   url: "https://github.com/studio-11-co/prml-verify-action"
-  version: "1.1.0"
+  version: "2.0.3"
