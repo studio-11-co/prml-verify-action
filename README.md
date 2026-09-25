@@ -2,7 +2,7 @@
 
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20177839-blue.svg)](https://doi.org/10.5281/zenodo.20177839)
 
-[![PRML locked · 04fa1689ac55](https://registry.falsify.dev/badge/04fa1689ac552fb1f7c3eaf9d0f6c2c0e8c1ca9d4ab6d2fb91a5e7df2c9b62f3.svg)](https://registry.falsify.dev/04fa1689ac552fb1f7c3eaf9d0f6c2c0e8c1ca9d4ab6d2fb91a5e7df2c9b62f3)
+[![PRML locked · af0bfb6d39b1](https://registry.falsify.dev/badge/af0bfb6d39b17e3ba8520b743043ff3d7cd303a14b02d526d9a5de9ed04b2375.svg)](https://registry.falsify.dev/af0bfb6d39b17e3ba8520b743043ff3d7cd303a14b02d526d9a5de9ed04b2375)
 
 > Verify [PRML](https://spec.falsify.dev/v0.1) (Pre-Registered ML Manifest) commitments in CI. Block merges when an evaluation claim was tampered, regressed below threshold, or never locked. Optionally anchor the hash to the public registry.
 
