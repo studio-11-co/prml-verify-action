@@ -92,6 +92,7 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
 | `anchor-to-registry` | no | `false` | If `true`, POST the manifest (`manifest-path`, or `.falsify/<claim>/spec.yaml`) to `registry-url` and emit `permalink`; skipped on tamper |
 | `registry-url` | no | `https://registry.falsify.dev` | Registry endpoint |
 | `registry-handle` | no | repo owner | Submitter handle on the registry commit |
+| `attest` | no | `false` | `mode=manifest` only: create a GitHub artifact attestation (Sigstore) over the canonical bytes; needs `id-token: write` and `attestations: write` |
 | `python-version` | no | `3.11` | Python version |
 | `falsify-version` | no | `0.4.1` | falsify package version (needs Python 3.11 or later) |
 | `working-directory` | no | `.` | Path containing `.falsify/` |
@@ -104,6 +105,8 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
 | `permalink` | Registry permalink (only when `anchor-to-registry=true` succeeded) |
 | `status` | Final status: `pass` / `fail` / `tamper` / `inconclusive` |
 | `badge-snippet` | Markdown snippet for embedding the registry badge in your README |
+| `attestation-url` | URL of the GitHub attestation (only when `attest=true`) |
+| `canonical-path` | Path of the canonical-bytes file the attestation is about (only when `attest=true`) |
 
 ---
 
@@ -143,6 +146,36 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
 ```
 
 `mode: manifest` needs either `expected-hash` or the committed `.prml.sha256` sidecar from `falsify lock`; without either, `falsify verify` exits 11 and the step reports `inconclusive`. The manifest is anchored only when the hash check did not report tamper.
+
+### Attest the manifest with GitHub (Sigstore), no registry needed
+
+```yaml
+jobs:
+  prml:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      id-token: write       # Sigstore signing
+      attestations: write   # GitHub attestation store
+    steps:
+      - uses: actions/checkout@v4
+      - id: prml
+        uses: studio-11-co/prml-verify-action@v2
+        with:
+          mode: manifest
+          manifest-path: accuracy.prml.yaml
+          attest: 'true'
+      - run: echo "${{ steps.prml.outputs.attestation-url }}"
+```
+
+The attestation's subject is the manifest's canonical bytes, so its SHA-256 is the PRML hash, and its predicate (`https://falsify.dev/prml/v0.1`) carries the pre-registered bar. Anyone can check it without trusting registry.falsify.dev:
+
+```bash
+python -c "import falsify_prml as p, sys; m = p.load_manifest('accuracy.prml.yaml'); sys.stdout.buffer.write(p.canonicalize(m).encode())" > accuracy.prml.canonical
+gh attestation verify accuracy.prml.canonical --repo <owner>/<repo> --predicate-type https://falsify.dev/prml/v0.1
+```
+
+Like a registry receipt, it shows the manifest existed by the signing time and has not changed; it does not show that the run happened after that time or that a reported result is true.
 
 ### Schema-only mode (no `.falsify/` tree, single canonical manifest)
 

@@ -132,3 +132,57 @@ jobs:
             echo "expected tamper step to exit non-zero (3)"; exit 1
           fi
           echo "tamper correctly detected; integration test OK"
+
+  attestation:
+    # Real end-to-end check of attest=true: create a GitHub artifact attestation
+    # for a sample manifest, then verify it with `gh attestation verify`.
+    # Push and manual runs only (pull requests from forks get no id-token).
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Write and lock a sample manifest
+        run: |
+          set -euo pipefail
+          pip install --quiet falsify==0.4.1
+          cat > claim.prml.yaml <<'YAML'
+          version: prml/0.1
+          claim_id: "01900000-0000-7000-8000-000000000000"
+          created_at: "2026-05-01T12:00:00Z"
+          metric: accuracy
+          comparator: ">="
+          threshold: 0.90
+          dataset:
+            id: imagenet-val-2012
+            hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          seed: 42
+          producer:
+            id: acme.example
+          YAML
+          falsify lock claim.prml.yaml
+      - id: prml
+        uses: ./
+        with:
+          mode: manifest
+          manifest-path: claim.prml.yaml
+          attest: 'true'
+      - name: Verify the attestation independently
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -n "${{ steps.prml.outputs.attestation-url }}" || { echo "no attestation-url output"; exit 1; }
+          echo "attestation: ${{ steps.prml.outputs.attestation-url }}"
+          H=$(falsify hash claim.prml.yaml)
+          C=$(sha256sum "${{ steps.prml.outputs.canonical-path }}" | cut -d' ' -f1)
+          test "$H" = "$C" || { echo "canonical file digest $C != PRML hash $H"; exit 1; }
+          gh attestation verify "${{ steps.prml.outputs.canonical-path }}" \
+            --repo "${{ github.repository }}" \
+            --predicate-type https://falsify.dev/prml/v0.1

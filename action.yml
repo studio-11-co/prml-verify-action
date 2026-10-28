@@ -80,6 +80,20 @@ inputs:
     required: false
     default: ''
 
+  attest:
+    description: |
+      If "true" (mode=manifest only), also create a GitHub artifact attestation
+      (Sigstore-signed, via actions/attest) whose subject is the manifest's
+      canonical bytes, so its SHA-256 is the PRML hash, with the PRML predicate
+      (predicate type https://falsify.dev/prml/v<version>). Anyone can then check
+      it with `gh attestation verify <canonical-file> --repo <owner/repo>
+      --predicate-type https://falsify.dev/prml/v0.1`. The calling job needs
+      `permissions: { id-token: write, attestations: write, contents: read }`;
+      private repositories need a plan with artifact attestations. Runs only
+      when verification succeeded.
+    required: false
+    default: 'false'
+
   python-version:
     description: 'Python version used to run falsify.'
     required: false
@@ -108,6 +122,12 @@ outputs:
   badge-snippet:
     description: 'Markdown snippet for embedding the registry badge in a README.'
     value: ${{ steps.run.outputs.badge-snippet }}
+  attestation-url:
+    description: 'URL of the GitHub artifact attestation (only set when attest=true).'
+    value: ${{ steps.attest.outputs.attestation-url }}
+  canonical-path:
+    description: 'Path of the canonical-bytes file that the attestation is about (only set when attest=true).'
+    value: ${{ steps.attest-prep.outputs.subject-path }}
 
 runs:
   using: 'composite'
@@ -349,3 +369,47 @@ runs:
         } >> "$GITHUB_STEP_SUMMARY"
 
         exit $EXIT
+
+    - name: Prepare PRML attestation
+      id: attest-prep
+      if: ${{ inputs.attest == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PRML_MODE: ${{ inputs.mode }}
+        PRML_MANIFEST_PATH: ${{ inputs.manifest-path }}
+      run: |
+        set -euo pipefail
+        if [ "$PRML_MODE" != "manifest" ] || [ -z "$PRML_MANIFEST_PATH" ]; then
+          echo "::error::attest=true needs mode=manifest and manifest-path"
+          exit 2
+        fi
+        OUT="$RUNNER_TEMP/prml-attest"
+        mkdir -p "$OUT"
+        python - "$PRML_MANIFEST_PATH" "$OUT" <<'PY' >> "$GITHUB_OUTPUT"
+        import json, os, sys
+        import falsify_prml as p
+        path, out = sys.argv[1], sys.argv[2]
+        m = p.load_manifest(path)
+        stmt = p.to_intoto_statement(m)
+        canon = p.canonicalize(m).encode("utf-8")
+        subject = os.path.join(out, os.path.basename(path) + ".canonical")
+        with open(subject, "wb") as fh:
+            fh.write(canon)
+        pred = os.path.join(out, "predicate.json")
+        with open(pred, "w", encoding="utf-8") as fh:
+            json.dump(stmt["predicate"], fh, sort_keys=True)
+        print(f"subject-path={subject}")
+        print(f"predicate-path={pred}")
+        print(f"predicate-type={stmt['predicateType']}")
+        print(f"hash={p.manifest_hash(m)}")
+        PY
+
+    - name: Attest PRML manifest
+      id: attest
+      if: ${{ inputs.attest == 'true' }}
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2
+      with:
+        subject-path: ${{ steps.attest-prep.outputs.subject-path }}
+        predicate-type: ${{ steps.attest-prep.outputs.predicate-type }}
+        predicate-path: ${{ steps.attest-prep.outputs.predicate-path }}

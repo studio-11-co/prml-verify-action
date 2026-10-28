@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.3.0 — 2026-10-28
+
+### Added
+
+- **`attest: 'true'`** (`mode: manifest`): creates a GitHub artifact attestation with `actions/attest` (pinned v4.2.2) whose subject is the manifest's canonical bytes, so the subject digest is the PRML hash, and whose predicate (`https://falsify.dev/prml/v<version>`) is the PRML bar. Verifiable with `gh attestation verify <canonical-file> --repo <owner/repo> --predicate-type https://falsify.dev/prml/v0.1`, without trusting the registry. New outputs `attestation-url` and `canonical-path`. The calling job needs `id-token: write` and `attestations: write`.
+- Self-test job `attestation`: creates a real attestation for a sample manifest and verifies it with `gh attestation verify`.
+
 ## v2.2.1 — 2026-10-28
 
 ### Changed
