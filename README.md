@@ -93,7 +93,7 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
 | `registry-url` | no | `https://registry.falsify.dev` | Registry endpoint |
 | `registry-handle` | no | repo owner | Submitter handle on the registry commit |
 | `python-version` | no | `3.11` | Python version |
-| `falsify-version` | no | `0.4.0` | falsify package version (needs Python 3.11 or later) |
+| `falsify-version` | no | `0.4.1` | falsify package version (needs Python 3.11 or later) |
 | `working-directory` | no | `.` | Path containing `.falsify/` |
 
 ## Outputs
@@ -185,7 +185,7 @@ The `badge-snippet` output is a paste-ready Markdown string like:
 - uses: studio-11-co/prml-verify-action@v2
   with:
     mode: guard
-    falsify-version: 0.4.0
+    falsify-version: 0.4.1
 - run: ./deploy-to-prod.sh
   if: steps.prml.outputs.status == 'pass'
 ```
@@ -229,7 +229,7 @@ Subcategory-by-subcategory maps from major AI governance frameworks to PRML fiel
 
 ## Spec status
 
-- PRML v0.1 stable; falsify CLI 0.4.0 (PyPI)
+- PRML v0.1 stable; falsify CLI 0.4.1 (PyPI)
 - v0.2 RFC frozen: 2026-05-22 (comment window closed)
 - Spec license: Community Specification License 1.0
 - Reference implementations: Python · JavaScript · Go · Rust (byte-equivalent across 21 conformance vectors: 13 v0.1 + 8 v0.2)

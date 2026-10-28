@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.2.1 — 2026-10-28
+
+### Changed
+
+- Default `falsify-version` `0.4.0` → `0.4.1`: `mode: manifest` with `observed` now rejects a non-finite observation (`inf`, `nan`) with exit 2 instead of passing every `>=` bar.
+
 ## v2.2.0 — 2026-10-28
 
 ### Fixed
