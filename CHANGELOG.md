@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.3.1 — 2026-10-28
+
+### Changed
+
+- Default `falsify-version` `0.5.0` → `0.5.1` (`--json` on `verify`, `lock` and `hash`, with errors as JSON too). The action's own steps are unchanged.
+
 ## v2.3.0 — 2026-10-28
 
 ### Added
