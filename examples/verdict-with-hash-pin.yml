@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: prml
-        uses: studio-11-co/prml-verify-action@v1
+        uses: studio-11-co/prml-verify-action@v2
         with:
           mode: verdict
           claim: imagenet-resnet50-baseline

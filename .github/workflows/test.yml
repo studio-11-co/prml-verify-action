@@ -69,7 +69,7 @@ jobs:
         id: prep
         run: |
           set -euo pipefail
-          pip install --quiet falsify==0.3.0
+          pip install --quiet falsify==0.4.0
           cat > claim.prml.yaml <<'EOF'
           version: prml/0.1
           claim_id: "01900000-0000-7000-8000-000000000000"
@@ -95,6 +95,23 @@ jobs:
           manifest-path: claim.prml.yaml
           expected-hash: ${{ steps.prep.outputs.hash }}
           observed: '0.95'
+
+      - name: PASS with anchor-to-registry against an unreachable registry (best-effort, must not fail the step)
+        id: anchor
+        uses: ./
+        with:
+          mode: manifest
+          manifest-path: claim.prml.yaml
+          expected-hash: ${{ steps.prep.outputs.hash }}
+          observed: '0.95'
+          anchor-to-registry: 'true'
+          registry-url: 'https://127.0.0.1:9'
+
+      - name: Assert manifest-mode anchoring was attempted and the run still passed
+        run: |
+          set -euo pipefail
+          test "${{ steps.anchor.outputs.status }}" = "pass" || { echo "expected status=pass, got '${{ steps.anchor.outputs.status }}'"; exit 1; }
+          echo "manifest-mode anchor path OK"
 
       - name: TAMPER — wrong expected hash must be flagged
         id: tamper

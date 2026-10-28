@@ -1,0 +1,28 @@
+# Example: verify a standalone PRML manifest (hash + predicate) and anchor it
+# to the public registry. Pin the hash with expected-hash or commit the
+# .prml.sha256 sidecar written by `falsify lock`.
+
+name: PRML manifest
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - id: prml
+        uses: studio-11-co/prml-verify-action@v2
+        with:
+          mode: manifest
+          manifest-path: accuracy.prml.yaml
+          observed: '0.93'
+          anchor-to-registry: 'true'
+      - name: Permalink + badge snippet
+        run: |
+          echo "Status:    ${{ steps.prml.outputs.status }}"
+          echo "Hash:      ${{ steps.prml.outputs.hash }}"
+          echo "Permalink: ${{ steps.prml.outputs.permalink }}"
+          echo '${{ steps.prml.outputs.badge-snippet }}'

@@ -61,9 +61,12 @@ inputs:
 
   anchor-to-registry:
     description: |
-      If "true", also POST the canonical manifest to the public registry
-      (default: registry.falsify.dev) and surface the permalink as an output.
-      Defaults to "false" — only enable when you want a public receipt.
+      If "true", also POST the manifest to the public registry (default:
+      registry.falsify.dev) and surface the permalink as an output. The
+      manifest sent is `manifest-path` when set (mode=manifest or
+      schema-only), otherwise `.falsify/<claim>/spec.yaml` (mode=verdict or
+      lock). Skipped on tamper. Defaults to "false": only enable when you
+      want a public receipt.
     required: false
     default: 'false'
 
@@ -83,9 +86,9 @@ inputs:
     default: '3.11'
 
   falsify-version:
-    description: 'Version of the single `falsify` PyPI package, pinned for reproducibility (default: 0.3.10). That one package provides both commands used here: the `falsify` PRML CLI and the `falsify-engine` command. There is no separate `falsify-engine` package to install.'
+    description: 'Version of the single `falsify` PyPI package, pinned for reproducibility (default: 0.4.0; requires Python 3.11 or later). That one package provides both commands used here: the `falsify` PRML CLI and the `falsify-engine` command. There is no separate `falsify-engine` package to install.'
     required: false
-    default: '0.3.10'
+    default: '0.4.0'
 
   working-directory:
     description: 'Path to the repository root that contains .falsify/.'
@@ -121,7 +124,7 @@ runs:
       run: |
         set -euo pipefail
         if ! printf '%s' "$FALSIFY_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$'; then
-          echo "::error::Invalid falsify-version '$FALSIFY_VERSION' (expected semver, e.g. 0.3.1)."
+          echo "::error::Invalid falsify-version '$FALSIFY_VERSION' (expected semver, e.g. 0.4.0)."
           exit 2
         fi
         python -m pip install --quiet --upgrade pip
@@ -290,13 +293,27 @@ runs:
         echo "status=$STATUS" >> "$GITHUB_OUTPUT"
 
         # Optional: anchor to public registry (best-effort, non-fatal)
-        if [ "$PRML_ANCHOR" = "true" ] && [ "$STATUS" != "tamper" ] && [ -n "$PRML_CLAIM" ]; then
-          MANIFEST_PATH=".falsify/${PRML_CLAIM}/spec.yaml"
+        # Which file to anchor: an explicit PRML manifest (mode=manifest or
+        # schema-only) wins; otherwise the engine claim's spec (verdict/lock).
+        ANCHOR_PATH=""
+        if [ -n "$PRML_MANIFEST_PATH" ]; then
+          ANCHOR_PATH="$PRML_MANIFEST_PATH"
+        elif [ -n "$PRML_CLAIM" ]; then
+          ANCHOR_PATH=".falsify/${PRML_CLAIM}/spec.yaml"
+        fi
+        if [ "$PRML_ANCHOR" = "true" ] && [ -z "$ANCHOR_PATH" ]; then
+          echo "::warning::anchor-to-registry=true but neither manifest-path nor claim is set; nothing to anchor"
+        fi
+        if [ "$PRML_ANCHOR" = "true" ] && [ "$STATUS" != "tamper" ] && [ -n "$ANCHOR_PATH" ]; then
+          MANIFEST_PATH="$ANCHOR_PATH"
           REG_OK=0
           case "$PRML_REGISTRY" in
             https://*) REG_OK=1 ;;
             *) echo "::warning::registry-url must start with https:// (got '$PRML_REGISTRY'); skipping registry anchor" ;;
           esac
+          if [ "$REG_OK" = "1" ] && [ ! -f "$MANIFEST_PATH" ]; then
+            echo "::warning::anchor-to-registry: $MANIFEST_PATH not found; skipping registry anchor"
+          fi
           if [ "$REG_OK" = "1" ] && [ -f "$MANIFEST_PATH" ]; then
             echo "::group::Anchor to ${PRML_REGISTRY}"
             ANCHOR_OUT=$(python "$ACTION_PATH/scripts/anchor.py" "$MANIFEST_PATH" "$PRML_REGISTRY" "$HANDLE" 2>&1 || true)

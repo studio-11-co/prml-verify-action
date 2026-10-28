@@ -11,7 +11,7 @@
 **TL;DR — drop this in your workflow:**
 
 ```yaml
-- uses: studio-11-co/prml-verify-action@v1
+- uses: studio-11-co/prml-verify-action@v2
 ```
 
 If `.falsify/` exists in your repo, this will fail the build on any tampered or regressed claim. That's it. The defaults are sane for most CI setups.
@@ -20,7 +20,7 @@ If `.falsify/` exists in your repo, this will fail the build on any tampered or 
 
 ## What this does
 
-[PRML](https://spec.falsify.dev/v0.1) is a small open spec (CC BY 4.0) for committing an ML evaluation claim — metric, threshold, dataset split, model version — to a SHA-256 hash **before** the run. The hash is a tamper-evident receipt anyone can re-derive against the canonical bytes.
+[PRML](https://spec.falsify.dev/v0.1) is a small open spec ([Community Specification License 1.0](https://github.com/studio-11-co/falsify/blob/main/spec/LICENSE.md)) for committing an ML evaluation claim — metric, threshold, dataset split, model version — to a SHA-256 hash **before** the run. The hash is a tamper-evident receipt anyone can re-derive against the canonical bytes.
 
 This Action wraps the [`falsify`](https://github.com/studio-11-co/falsify) reference CLI (and its `falsify-engine` companion) as a composite GitHub Action. Modes:
 
@@ -40,7 +40,7 @@ It can also optionally **POST your manifest to [registry.falsify.dev](https://re
 
 - **Block post-hoc threshold tuning at merge time.** If someone edits the locked manifest after the experiment ran, the hash changes and CI fails with exit code 3.
 - **Make eval claims falsifiable.** A reviewer or regulator who reads your paper or model card can re-derive the SHA-256 from the canonical bytes and confirm the threshold was fixed before the data.
-- **Five-line integration.** No service to deploy, no account to register. The Action runs `falsify` from PyPI; the optional registry is content-addressed and stateless beyond the hash.
+- **Five-line integration.** No service to deploy, no account to register. The Action runs `falsify` from PyPI; the optional registry stores the submitted manifest publicly under its hash and adds an RFC 3161 timestamp and a Rekor transparency-log entry.
 
 What this does **not** solve, named explicitly in §8.1 of the spec: selective non-publication. You can pre-register ten claims and report two. PRML is a commitment primitive, not a complete publication-integrity system.
 
@@ -51,7 +51,7 @@ What this does **not** solve, named explicitly in §8.1 of the spec: selective n
 ### 1. Lock a PRML manifest locally (one-time, before CI)
 
 ```bash
-pip install falsify
+pip install falsify                # needs Python 3.11 or later; or: pipx install falsify / uvx falsify
 falsify init accuracy.prml.yaml    # skeleton manifest
 # edit accuracy.prml.yaml: metric, comparator, threshold, dataset.hash, seed, producer
 falsify lock accuracy.prml.yaml    # canonicalize + SHA-256 + write accuracy.prml.prml.sha256
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: studio-11-co/prml-verify-action@v1
+      - uses: studio-11-co/prml-verify-action@v2
 ```
 
 That's it. Now any commit that tampers with a locked claim, or any model-version drift that pushes the metric below the threshold, fails the build.
@@ -83,16 +83,17 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `mode` | no | `guard` | `guard` / `verdict` / `lock` / `schema-only` |
+| `mode` | no | `guard` | `manifest` / `guard` / `verdict` / `lock` / `schema-only` |
 | `claim` | when `mode=verdict` or `mode=lock` | `` | Claim name |
-| `manifest-path` | when `mode=schema-only` | `` | Path to manifest YAML to schema-validate |
+| `manifest-path` | when `mode=manifest` or `mode=schema-only` | `` | Path to the PRML manifest YAML |
+| `observed` | no | `` | Observed metric value (`mode=manifest`); exit 10 if the predicate does not hold |
 | `schema-version` | no | `v0.1` | `v0.1` (stable) or `v0.2-rfc` (open through 2026-05-22) |
 | `expected-hash` | no | `` | Pin a SHA-256 hash; mismatch → exit 3 |
-| `anchor-to-registry` | no | `false` | If `true`, POST manifest to `registry-url` and emit `permalink` |
+| `anchor-to-registry` | no | `false` | If `true`, POST the manifest (`manifest-path`, or `.falsify/<claim>/spec.yaml`) to `registry-url` and emit `permalink`; skipped on tamper |
 | `registry-url` | no | `https://registry.falsify.dev` | Registry endpoint |
 | `registry-handle` | no | repo owner | Submitter handle on the registry commit |
 | `python-version` | no | `3.11` | Python version |
-| `falsify-version` | no | `0.3.1` | falsify package version |
+| `falsify-version` | no | `0.4.0` | falsify package version (needs Python 3.11 or later) |
 | `working-directory` | no | `.` | Path containing `.falsify/` |
 
 ## Outputs
@@ -112,19 +113,36 @@ That's it. Now any commit that tampers with a locked claim, or any model-version
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: studio-11-co/prml-verify-action@v1
+- uses: studio-11-co/prml-verify-action@v2
 ```
 
 ### Verdict for a specific claim with hash pinning
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: studio-11-co/prml-verify-action@v1
+- uses: studio-11-co/prml-verify-action@v2
   with:
     mode: verdict
     claim: imagenet-resnet50-baseline
     expected-hash: fb7403c40afe63d892bf4aea2c123fdd7fe85366b74a277875465c4cb3cbf19c
 ```
+
+### Verify a PRML manifest, then anchor it to the public registry
+
+```yaml
+- uses: actions/checkout@v4
+- id: prml
+  uses: studio-11-co/prml-verify-action@v2
+  with:
+    mode: manifest
+    manifest-path: accuracy.prml.yaml
+    expected-hash: <sha256 printed by falsify lock>  # or commit the .prml.sha256 sidecar instead
+    observed: '0.93'
+    anchor-to-registry: 'true'
+- run: echo "${{ steps.prml.outputs.permalink }}"
+```
+
+`mode: manifest` needs either `expected-hash` or the committed `.prml.sha256` sidecar from `falsify lock`; without either, `falsify verify` exits 11 and the step reports `inconclusive`. The manifest is anchored only when the hash check did not report tamper.
 
 ### Schema-only mode (no `.falsify/` tree, single canonical manifest)
 
@@ -132,7 +150,7 @@ For repos that ship one PRML manifest at a known path and only want a schema-sha
 
 ```yaml
 - uses: actions/checkout@v6
-- uses: studio-11-co/prml-verify-action@v1
+- uses: studio-11-co/prml-verify-action@v2
   with:
     mode: schema-only
     manifest-path: claims/cv-screening.prml.yaml
@@ -146,7 +164,7 @@ Exit codes: `0` PASS, `10` schema validation FAIL, `2` IO / bad inputs. Works ag
 ```yaml
 - uses: actions/checkout@v4
 - id: prml
-  uses: studio-11-co/prml-verify-action@v1
+  uses: studio-11-co/prml-verify-action@v2
   with:
     mode: verdict
     claim: imagenet-resnet50-baseline
@@ -167,7 +185,7 @@ The `badge-snippet` output is a paste-ready Markdown string like:
 - uses: studio-11-co/prml-verify-action@v2
   with:
     mode: guard
-    falsify-version: 0.3.1
+    falsify-version: 0.4.0
 - run: ./deploy-to-prod.sh
   if: steps.prml.outputs.status == 'pass'
 ```
@@ -185,7 +203,7 @@ When `anchor-to-registry: 'true'`:
 3. The registry returns `{hash, permalink, timestamp}` and stores the manifest publicly
 4. The Action emits the `permalink` and a paste-ready `badge-snippet` output
 
-The registry has no auth and no server-side state beyond the hash. It exists for discoverability — your manifest can be anchored anywhere (a public git repo, an arXiv preprint, a Sigstore attestation, your own static host). The registry is one option, not a requirement.
+The registry has no auth. It stores the submitted manifest publicly under its hash; the permalink page shows the RFC 3161 timestamp token and the Rekor entry when available. It exists for discoverability — your manifest can be anchored anywhere (a public git repo, an arXiv preprint, a Sigstore attestation, your own static host). The registry is one option, not a requirement.
 
 Read more: [What is PRML?](https://falsify.dev/what-is-prml) · [PRML vs in-toto, SLSA, Model Cards, HELM](https://falsify.dev/vs)
 
@@ -211,9 +229,9 @@ Subcategory-by-subcategory maps from major AI governance frameworks to PRML fiel
 
 ## Spec status
 
-- PRML v0.1 stable; falsify CLI 0.3.1 (PyPI)
+- PRML v0.1 stable; falsify CLI 0.4.0 (PyPI)
 - v0.2 RFC frozen: 2026-05-22 (comment window closed)
-- Spec license: CC BY 4.0
+- Spec license: Community Specification License 1.0
 - Reference implementations: Python · JavaScript · Go · Rust (byte-equivalent across 21 conformance vectors: 13 v0.1 + 8 v0.2)
 
 If you find a gap or edge case the spec doesn't handle, [open an issue](https://github.com/studio-11-co/falsify/issues) before the freeze date — that's how v0.2 gets sharper.
@@ -226,7 +244,7 @@ If you find a gap or edge case the spec doesn't handle, [open an issue](https://
 
 ## License
 
-This Action is MIT-licensed. The PRML specification is CC BY 4.0. The reference [`falsify`](https://github.com/studio-11-co/falsify) toolkit is MIT.
+This Action is MIT-licensed. The PRML specification is under the Community Specification License 1.0. The reference [`falsify`](https://github.com/studio-11-co/falsify) toolkit is MIT.
 
 Maintained by [Cüneyt Öztürk](https://falsify.dev) · PRML / falsify track lead: [Cüneyt Öztürk](https://www.linkedin.com/in/cuneyt-ozturk-39812963/) · `hello@falsify.dev`
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.2.0 — 2026-10-28
+
+### Fixed
+
+- **`anchor-to-registry` now works in `mode: manifest`** (and `schema-only`). The anchor step only looked for `.falsify/<claim>/spec.yaml`, so a standalone PRML manifest was never posted and no `permalink` came back. It now anchors `manifest-path` when set, otherwise the engine claim's spec, warns when there is nothing to anchor or the file is missing, and still skips anchoring on tamper.
+
+### Changed
+
+- Default `falsify-version` `0.3.10` → `0.4.0` (needs Python 3.11 or later; the default `python-version` is 3.11).
+- README and examples: `@v1` → `@v2` everywhere (the floating `v1` tag points at old code); inputs table now lists `manifest` mode and the `observed` input; new example `examples/manifest-anchor.yml`; the registry description now says what it stores (the manifest under its hash, with an RFC 3161 timestamp and a Rekor entry); spec licence corrected to the Community Specification License 1.0.
+- Self-test: installs `falsify==0.4.0` and exercises manifest-mode anchoring against an unreachable registry (best-effort, the step must still pass).
+
 ## v2.0.3 — 2026-06-02
 
 ### Changed
