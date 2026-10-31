@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.3.2 — 2026-10-31
+
+### Changed
+
+- Default `falsify-version` `0.5.1` → `0.5.2` (the wheel ships `falsify_linkage.py`; `falsify linkage start|finish|verify` works from the `falsify` command). The action's own steps are unchanged.
+
 ## v2.3.1 — 2026-10-28
 
 ### Changed
